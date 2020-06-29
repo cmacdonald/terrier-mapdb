@@ -19,11 +19,15 @@ public class MapDBMetaIndexBuilder extends MetaIndexBuilder {
     DB db;
     String[] keyNames;
     String[] reverseKeyNames;
+    IndexOnDisk index;
+    String structureName;
     protected Map<String,List<String>> forwardmeta = new HashMap<>();
 
     public MapDBMetaIndexBuilder(IndexOnDisk _index, String structureName, String[] _keyNames, String[] _reverseKeys) throws IOException {
         String dbFilename = MapDBMetaIndex.construct_filename(_index, structureName);
         this.keyNames = _keyNames;
+        this.index = _index;
+        this.structureName = structureName;
         db = DBMaker.fileDB(dbFilename).make();
 
         boolean[] compress = new boolean[keyNames.length];
@@ -55,9 +59,12 @@ public class MapDBMetaIndexBuilder extends MetaIndexBuilder {
     }
 
     @Override
-    public void close() {
+    public void close() throws IOException {
         Arrays.asList(reverseKeyNames).parallelStream().forEach(k -> makeReverse(k) );
         db.close();
+        index.setIndexProperty("index."+structureName+".key-names", String.join(",", keyNames));		
+        index.setIndexProperty("index."+structureName+".reverse-key-names", String.join(",", reverseKeyNames));
+        index.flush();		
     }
 
     @Override
